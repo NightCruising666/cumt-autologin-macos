@@ -110,7 +110,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
             preferences = loaded
             if ![30.0, 60.0, 120.0, 300.0].contains(preferences.interval) { preferences.interval = 60 }
         }
-        if preview { preferences.username = "02210000"; preferences.operatorName = "中国移动" }
         createMenu()
         let appMenu = NSMenu()
         let parent = NSMenuItem(); let submenu = NSMenu()
@@ -451,7 +450,6 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSMenuDelegate, NSWind
         if window == nil { makeSettings() }
         usernameField.stringValue = preferences.username
         secureField.stringValue = ""; visibleField.stringValue = ""
-        if preview { secureField.stringValue = "demo-password" }
         revealButton.state = .off; secureField.isHidden = false; visibleField.isHidden = true
         operatorPopup.selectItem(withTitle: preferences.operatorName)
         intervalPopup.selectItem(at: [30.0, 60.0, 120.0, 300.0].firstIndex(of: preferences.interval) ?? 1)
