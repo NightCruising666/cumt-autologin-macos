@@ -119,16 +119,39 @@ struct NativeBackend {
         }
     }
     static func pageText(_ data: Data) -> String { String(data: data, encoding: .utf8) ?? String(data: data, encoding: .isoLatin1) ?? "" }
+    // The gateway writes v4ip/olmac only once a session exists. While logged out
+    // the same values arrive as ss5/ss4 (and v46ip on IPv6-enabled ACs), which is
+    // exactly what the portal's own page script reads; see a41.js. Without these
+    // names a logged-out Mac could never identify its terminal address and the
+    // hidden-SSID check refused every login.
+    static let terminalIPFields = ["ss5", "v4ip", "v46ip", "wlan_user_ip", "user_ip"]
+    static let terminalMACFields = ["ss4", "olmac", "wlan_user_mac", "user_mac"]
+    // "Dr.COM" carries a dot, so a plain "drcom" alternative never matches the
+    // portal's own marker; eportal and WebLoginID cover the login page.
+    static let campusPortalMarker = "dr\\.?com|eportal|哆点|WebLoginID"
+
+    static func terminalField(_ names: [String], value: String, in html: String) -> String? {
+        for name in names {
+            if let found = capture("\\b" + name + "\\s*=\\s*['\"](\(value))['\"]", in: html) { return found }
+        }
+        return nil
+    }
     static func parsePortal(_ html: String, environment: CampusEnvironment) throws -> (String, String) {
-        let pageIP = capture("\\b(?:v4ip|wlan_user_ip|user_ip)\\s*=\\s*['\"]([\\d.]+)['\"]", in: html)
+        let pageIP = terminalField(terminalIPFields, value: "[\\d.]+", in: html)
         let ip = pageIP ?? environment.ip
         guard validIP(ip), ip == environment.ip else { throw AppError.message("认证页终端地址与 Wi-Fi 不一致，请检查 TUN 或虚拟网卡。") }
         if environment.ssid == nil {
-            guard pageIP != nil, html.range(of: "drcom|eportal|哆点", options: [.regularExpression, .caseInsensitive]) != nil else {
+            // Modern macOS hides the SSID from apps without Location access, so
+            // this is the normal path: require the page to be the campus portal,
+            // and to state the terminal address we are about to authorise.
+            guard html.range(of: Self.campusPortalMarker, options: [.regularExpression, .caseInsensitive]) != nil else {
                 throw AppError.message("SSID 被系统隐藏，且页面不符合校园网认证特征，本次不提交密码。")
             }
+            guard pageIP != nil else {
+                throw AppError.message("认证页未提供终端地址（ss5/v4ip/v46ip），无法核对本机地址，本次不提交密码。")
+            }
         }
-        let raw = capture("\\b(?:olmac|wlan_user_mac|user_mac)\\s*=\\s*['\"]([0-9a-f:.-]+)['\"]", in: html) ?? ""
+        let raw = terminalField(terminalMACFields, value: "[0-9a-fA-F:.\\-]+", in: html) ?? ""
         let mac = raw.replacingOccurrences(of: "[:.-]", with: "", options: .regularExpression).lowercased()
         return (ip, mac.range(of: "^[0-9a-f]{12}$", options: .regularExpression) != nil ? mac : "000000000000")
     }

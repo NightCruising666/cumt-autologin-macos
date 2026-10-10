@@ -3,7 +3,7 @@
 [GitHub 项目 / 源码](https://github.com/NightCruising666/cumt-autologin-macos) · [下载 macOS 安装包](https://github.com/NightCruising666/cumt-autologin-macos/releases)
 
 用于南湖校区 **CUMT_Stu** / **http://10.2.5.251** 的校园网认证。
-当前是可运行的本地初版：原生界面和模拟协议测试已验证，真实校园网登录、注销仍需现场测试。
+2026-10-10 已在真实校园网实测走通完整链路：注销 → 菜单栏重新认证 → 204 联网复检；睡眠唤醒后的自动补登仍待现场确认。
 
 ## 启动与设置
 
@@ -89,7 +89,7 @@ DMG 打开后显示应用 → 应用程序文件夹的箭头布局；应用复�
 
 ## 网络与凭据处理
 
-能读取 SSID 时，要求是 CUMT_Stu。系统隐藏 SSID 时，结合 Wi-Fi 路由、校园网 IPv4 与门户终端地址和 Dr.COM/eportal 特征识别；条件不满足时不提交密码。
+能读取 SSID 时，要求是 CUMT_Stu。当前 macOS 不把 SSID 提供给未获定位授权的应用，所以实际常走“系统隐藏 SSID”分支：此时要求门户页带 Dr.COM/eportal/WebLoginID 特征，并按网关自己的优先级读取终端地址——未认证的登录页写在 `ss5`/`v46ip`，认证后才是 `v4ip`/`olmac`；核对该地址与本机 Wi-Fi 地址一致后才提交密码。
 不强制切换 Wi-Fi，建议为 CUMT_Stu 开启系统“自动加入”。不自动注销其他设备。
 
 使用会话 Cookie 完成 HTTP 认证，登录成功以外网检查为准。认证首页只允许同一校园网地址的跳转；携带密码的请求不自动跟随跳转。
@@ -136,4 +136,4 @@ DMGBUILD_BIN="$PWD/build/dmg-tools/bin/dmgbuild" ./package_dmg.sh
 用 `open 'build/CUMT Auto Login.app' --args --preview --settings` 可以预览界面；该模式不操作真实钥匙串或网络，且不安装开机自启。
 实际验证需要在南湖连接 CUMT_Stu：在本机保存账号，手动登录确认成功，再测试注销、自动补登和睡眠唤醒。
 
-独立版验证：26 项 Swift 原生联网测试和 10 项卸载测试通过，包括真实本地 HTTP Cookie 复用与跳转限制、重复清理、未知文件保留及应用身份核验；动态依赖检查确认只链接 macOS 系统框架。真实校园网认证仍待现场验证。
+独立版验证：31 项 Swift 原生联网测试和 10 项卸载测试通过，包括真实本地 HTTP Cookie 复用与跳转限制、未认证登录页与已认证页两种门户标记的终端地址解析、重复清理、未知文件保留及应用身份核验；动态依赖检查确认只链接 macOS 系统框架。真实校园网登录与注销已于 2026-10-10 实测通过。
